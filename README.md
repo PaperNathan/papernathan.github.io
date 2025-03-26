@@ -1,17 +1,5 @@
-# Github Pages Site
-🚀 [View deploy](https://nathan-wade.com)
+# Vue 3 + TypeScript + Vite
 
-## CSS and Classes
-1. All components should have a top level containing div with a class name that matches the component name.
-2. All children with classes under the top level component div should follow this convention `Component__identifier--modifier`.  Additional examples could include: `App__content`, `Sidebar__content--dark`, or `Layout__grid--mobile`.
+This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
 
-## Import Order
-The current order I enjoy is:
-1. CSS
-2. Types
-3. Package Imports
-4. Component Imports
-5. Composable Imports
-
-## Tooling
-(XIcons)[https://www.xicons.org/#/]
+Learn more about the recommended Project Setup and IDE Support in the [Vue Docs TypeScript Guide](https://vuejs.org/guide/typescript/overview.html#project-setup).
