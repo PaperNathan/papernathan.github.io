@@ -105,6 +105,8 @@ function processMarkdownFile(filePath, fileOptions) {
           orderedListCollapse(line);
           break;
       }
+    } else if (checkSingleLine(line)) {
+      processSingleLine(line);
     } else {
       state.content += line + "\n";
     }
@@ -115,7 +117,6 @@ function processMarkdownFile(filePath, fileOptions) {
       multilineOptions.alive = false;
       state.content += wrapMultiline() + "\n";
     }
-    console.log(state.content);
 
     // write the processed content to a new Vue file
     const vueFileName = fileOptions.name + ".vue";
@@ -252,7 +253,26 @@ function orderedListCollapse(line) {
   multilineCache.push(`<li>${line.split(" ")[1]}</li>`);
 }
 
-function wrapMultiline() {
+function checkSingleLine(line) {
+  if (line.startsWith("#")) return true;
+  return false;
+}
+
+function processSingleLine(line) {
+  if (line.startsWith("####")) {
+    line = line.replace("####", "<h4>") + "</h4>";
+  } else if (line.startsWith("###")) {
+    line = line.replace("###", "<h3>") + "</h3>";
+  } else if (line.startsWith("##")) {
+    line = line.replace("##", "<h2>") + "</h2>";
+  } else if (line.startsWith("#")) {
+    line = line.replace("#", "<h1>") + "</h1>";
+  }
+
+  state.content += line + "\n";
+}
+
+function wrapMultiline(line, kind) {
   let wrappedContent = "";
   wrappedContent += `<${multilineOptions.kind}>\n`;
   multilineCache.forEach((line) => {
