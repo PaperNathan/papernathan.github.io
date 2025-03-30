@@ -1,10 +1,11 @@
-import { createMemoryHistory, createRouter } from "vue-router";
+import { createWebHistory, createRouter } from "vue-router";
 
 const routes = [
-  { path: "/", component: () => import("@/views/HomeView/HomeView.vue") },
+  { path: "/home", component: () => import("@/views/HomeView/HomeView.vue") },
+  { path: "/blog", component: () => import("@/views/BlogView/BlogView.vue") },
 ];
 
 export default createRouter({
-  history: createMemoryHistory(),
+  history: createWebHistory(),
   routes,
 });
