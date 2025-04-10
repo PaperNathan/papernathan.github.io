@@ -1,24 +1,24 @@
-$black: (0 0% 0%);
-$dark-grey: hsl(214 33% 15%);
-$white: hsl(0 0% 100%);
+$black: rgb(0, 0, 0);
+$dark-grey: rgb(26, 37, 51);
+$white: rgb(255, 255, 255);
 
-$red-hue: hsl(0 100 45%);
-$red: hsl(0 100% 70%);
+$red-hue: rgb(230, 0, 0);
+$red: rgb(255, 102, 102);
 
-$green-hue: hsl(120 100 45%);
-$green: hsl(120 100% 70%);
+$green-hue: rgb(0, 230, 0);
+$green: rgb(102, 255, 102);
 
-$yellow-hue: hsl(60 100 45%);
-$yellow: hsl(60 100% 70%);
+$yellow-hue: rgb(230, 230, 0);
+$yellow: rgb(255, 255, 102);
 
-$blue-hue: hsl(240 100 45%);
-$blue: hsl(240 100% 70%);
+$blue-hue: rgb(0, 0, 230);
+$blue: rgb(102, 102, 255);
 
-$magenta-hue: hsl(300 100 45%);
-$magenta: hsl(300 100% 70%);
+$magenta-hue: rgb(230, 0, 230);
+$magenta: rgb(255, 102, 255);
 
-$cyan-hue: hsl(180 100 45%);
-$cyan: hsl(180 100% 70%);
+$cyan-hue: rgb(0, 230, 230);
+$cyan: rgb(102, 255, 255);
 
 $background: $dark-grey;
 $text: $white;

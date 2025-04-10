@@ -34,12 +34,3 @@ This is a relationship where two components are separated by any number of paren
 #### How do they communicate?
 
 1. **Prop Drilling:** This is generally advised against but there are some cases where it makes sense. For example, in a Form you may have a Page level component holding all stateful data for that page, it passes a piece of state to a Form component, and then that Form component passes a piece of the form data as a prop to the Form Input component. Example:
-
-```
-<PageComponent>
-	<Form :data="formData">
-		<FormInput v-model="formData.name" />
-		<SubmitButton @submit="() => emits('formSubmit', formData)" />
-	</Form>
-</PageComponent>
-```

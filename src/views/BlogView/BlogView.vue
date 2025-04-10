@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import test from "./test.vue";
+import * as components from "./components";
 </script>
 
 <template>
   <div class="BlogView">
-    <test />
+    <Component
+      v-for="(component, index) in components"
+      :key="index"
+      :is="component"
+    />
   </div>
 </template>
 

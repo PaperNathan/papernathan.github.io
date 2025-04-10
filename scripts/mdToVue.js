@@ -3,12 +3,18 @@ import path from "path";
 import { fileURLToPath } from "url";
 import readline from "readline";
 
+import textFormatter from "./textFormatter.js";
+
+const { fileNameToVueComponentName, removeFileExtension } = textFormatter();
+
 let state = {
   existingVueFiles: [],
   content: "",
 };
 let multilineCache = [];
 let multilineOptions = {};
+let vueFiles = [];
+let markdownFiles = [];
 
 // Get the current file's directory
 const __filename = fileURLToPath(import.meta.url);
@@ -18,14 +24,23 @@ const markdownArticleDirectory = path.join(
   __dirname,
   "../src/views/BlogView/articles",
 );
-const outputDirectory = path.join(__dirname, "../src/views/BlogView/");
+const outputDirectory = path.join(
+  __dirname,
+  "../src/views/BlogView/components",
+);
 
+/**
+ * Main function to initialize the script
+ */
 function main() {
   readExistingVueFiles();
   initMarkdownProcessing();
 }
 
-// Read Vue Files and append them to the existingVueFiles array
+/**
+ * Reads the existing Vue files in the output directory
+ * and populates the existingVueFiles array.
+ */
 function readExistingVueFiles() {
   fs.readdir(outputDirectory, (err, files) => {
     if (err) {
@@ -34,19 +49,19 @@ function readExistingVueFiles() {
     }
 
     // Filter only Vue files and store them in an array
-    const vueFiles = files.filter((file) => file.endsWith(".vue"));
+    vueFiles = files.filter((file) => file.endsWith(".vue"));
     vueFiles.forEach((file) => {
       const fileName = file.replace(".vue", "");
-      if (fileName !== "BlogView") {
-        state.existingVueFiles.push(fileName);
-      }
+      state.existingVueFiles.push(fileName);
     });
   });
 }
 
-// Read markdown files, match them with existing Vue files, and process unmatched files
+/**
+ * Read all markdown files from the articles directory
+ * Check for nonexistant Vue files and process the markdown files
+ */
 function initMarkdownProcessing() {
-  // Read all files in the directory
   fs.readdir(markdownArticleDirectory, (err, files) => {
     if (err) {
       console.error("Error reading directory:", err.message);
@@ -54,7 +69,7 @@ function initMarkdownProcessing() {
     }
 
     // Filter only markdown files and store them in an array
-    const markdownFiles = files.filter((file) => file.endsWith(".md"));
+    markdownFiles = files.filter((file) => file.endsWith(".md"));
 
     // Process each file
     markdownFiles.forEach((file) => {
@@ -75,9 +90,21 @@ function initMarkdownProcessing() {
         );
       }
     });
+
+    writeArticleIndex();
   });
 }
 
+/**
+ *  Process a single markdown file into a vue file.
+ *    - Reads the markdown file
+ *    - Collapses interline markdown (e.g. bold, italic)
+ *    - Collapses mutliline markdown (e.g. code blocks, blockquotes, lists)
+ *    - Collapses single line markdown (e.g. headings)
+ *    - Writes the processed content to a new Vue file
+ * @param filePath The filepath of the markdown file
+ * @param fileOptions The filename and the date of processing
+ */
 function processMarkdownFile(filePath, fileOptions) {
   const readStream = fs.createReadStream(filePath, "utf8");
   const rl = readline.createInterface({
@@ -138,6 +165,12 @@ function processMarkdownFile(filePath, fileOptions) {
   });
 }
 
+/**
+ * Looks at an individual line and collapses interline markdown elements
+ * @example collapseInterlineMd("This is **bold** text") // This is <strong>bold</strong> text
+ * @param line A line of markdown text
+ * @returns html string that matches markdown
+ */
 function collapseInterlineMd(line) {
   line = collapseChunk(line, "***", {
     open: "<strong><em>",
@@ -160,7 +193,7 @@ function collapseInterlineMd(line) {
     close: "</code>",
   });
 
-  // collapse links
+  // Collapse Links
   while (line.includes("[")) {
     let start = line.indexOf("[");
     let end = line.indexOf("]");
@@ -179,6 +212,14 @@ function collapseInterlineMd(line) {
   return line;
 }
 
+/**
+ * Collapses a chunk of markdown into html tags
+ * @example collapseChunk("This is **bold** text", "**") // This is <strong>bold</strong> text
+ * @param line A line of markdown text
+ * @param chunk The chunk of markdown to collapse
+ * @param replacement The replacement html tags
+ * @returns html string that matches markdown
+ */
 function collapseChunk(line, chunk, replacement) {
   if (line.includes("```")) return line;
   if (line.includes(chunk)) {
@@ -194,6 +235,10 @@ function collapseChunk(line, chunk, replacement) {
   return line;
 }
 
+/**
+ * Checks for multiline markdown elements and sets the multilineOptions
+ * @param line a line of markdown text
+ */
 function checkMultiline(line) {
   if (line.startsWith("```")) {
     multilineOptions.kind = "pre";
@@ -213,6 +258,11 @@ function checkMultiline(line) {
   }
 }
 
+/**
+ * Collapses codeblock markdown elements into html tags
+ * @param line a line of markdown text
+ * @returns void; used to break out of the collapse when the block is opened and closed.
+ */
 function codeBlockCollapse(line) {
   if (multilineCache.length == 0) {
     multilineCache.push("<code>");
@@ -225,7 +275,11 @@ function codeBlockCollapse(line) {
   }
   multilineCache.push(line);
 }
-
+/**
+ * Collapses blockquote markdown elements into html tags
+ * @param line a line of markdown text
+ * @returns void; used to break out of the collapse when the block is opened and closed.
+ */
 function blockQuoteCollapse(line) {
   if (!line.startsWith(">") && multilineCache.length > 0) {
     multilineOptions.alive = false;
@@ -235,6 +289,11 @@ function blockQuoteCollapse(line) {
   multilineCache.push(line.slice(1).trim());
 }
 
+/**
+ * Collapses unordered list markdown elements into html tags
+ * @param line a line of markdown text
+ * @returns void; used to break out of the collapse when the block is opened and closed.
+ */
 function unorderedListCollapse(line) {
   if (!line.startsWith("-") && multilineCache.length > 0) {
     multilineOptions.alive = false;
@@ -244,6 +303,11 @@ function unorderedListCollapse(line) {
   multilineCache.push(`<li>${line.slice(1).trim()}</li>`);
 }
 
+/**
+ * Collapses ordered list markdown elements into html tags
+ * @param line a line of markdown text
+ * @returns void; used to break out of the collapse when the block is opened and closed.
+ */
 function orderedListCollapse(line) {
   if (!line.match(/^\d/) && multilineCache.length > 0) {
     multilineOptions.alive = false;
@@ -253,11 +317,20 @@ function orderedListCollapse(line) {
   multilineCache.push(`<li>${line.split(" ")[1]}</li>`);
 }
 
+/**
+ * Checks if the line is a single line of markdown
+ * @param line a line of markdown text
+ * @returns true when the line starts with "#" and false for all other lines.
+ */
 function checkSingleLine(line) {
   if (line.startsWith("#")) return true;
   return false;
 }
 
+/**
+ * Collapses a single line of markdown into html tags and updates state.content
+ * @param line a line of markdown text
+ */
 function processSingleLine(line) {
   if (line.startsWith("####")) {
     line = line.replace("####", "<h4>") + "</h4>";
@@ -272,6 +345,12 @@ function processSingleLine(line) {
   state.content += line + "\n";
 }
 
+/**
+ * Wraps the multiline cache into a single html tag
+ * @param line a line of markdown text
+ * @param kind the html tag for the markdown element
+ * @returns the html wrapped content
+ */
 function wrapMultiline(line, kind) {
   let wrappedContent = "";
   wrappedContent += `<${multilineOptions.kind}>\n`;
@@ -283,6 +362,41 @@ function wrapMultiline(line, kind) {
   multilineOptions.kind = "";
   multilineOptions.alive = false;
   return wrappedContent;
+}
+
+/**
+ * Write an index file that imports and exports all
+ * Vue article files.
+ */
+function writeArticleIndex() {
+  let fileImports = ``;
+
+  markdownFiles.forEach((file) => {
+    const fileName = fileNameToVueComponentName(removeFileExtension(file));
+    fileImports += `import ${fileName} from "./${fileName}.vue";\n `;
+  });
+
+  fileImports += `export { \n`;
+
+  markdownFiles.forEach((file) => {
+    const fileName = fileNameToVueComponentName(removeFileExtension(file));
+    fileImports += `${fileName}, \n `;
+  });
+
+  fileImports += `}; \n`;
+
+  const filePath = path.join(
+    __dirname,
+    "../src/views/BlogView/components/index.ts",
+  );
+
+  fs.writeFile(filePath, fileImports, (err) => {
+    if (err) {
+      console.error("Error writing file:", err.message);
+    } else {
+      console.log("Article index file created:", filePath);
+    }
+  });
 }
 
 main();

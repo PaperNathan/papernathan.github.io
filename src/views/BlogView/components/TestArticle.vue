@@ -13,7 +13,9 @@
 
     <pre>
 <code>
-
+<Parent>
+	<Child />
+</Parent>
 </code>
 </pre>
 
@@ -42,7 +44,11 @@
 
     <pre>
 <code>
-
+<Grandparent>
+	<Parent>
+		<Child />
+	</Parent>
+</Grandparent>
 </code>
 </pre>
 
@@ -50,16 +56,6 @@
 
     <ol>
       <li><strong>Prop</strong></li>
-    </ol>
-
-    <pre>
-<code>
-
-</code>
-</pre>
-
-    <ol>
-      <li>undefined</li>
     </ol>
   </div>
 </template>
