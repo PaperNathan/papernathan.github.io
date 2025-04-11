@@ -15,6 +15,7 @@ let multilineCache = [];
 let multilineOptions = {};
 let vueFiles = [];
 let markdownFiles = [];
+let metadata = {};
 
 // Get the current file's directory
 const __filename = fileURLToPath(import.meta.url);
@@ -130,6 +131,9 @@ function processMarkdownFile(filePath, fileOptions) {
           break;
         case "ol":
           orderedListCollapse(line);
+          break;
+        case "metadata":
+          processMetadata(line);
           break;
       }
     } else if (checkSingleLine(line)) {
@@ -256,6 +260,10 @@ function checkMultiline(line) {
     multilineOptions.kind = "ol";
     multilineOptions.alive = true;
   }
+  if (line.startsWith("---")) {
+    multilineOptions.kind = "metadata";
+    multilineOptions.alive = true;
+  }
 }
 
 /**
@@ -315,6 +323,25 @@ function orderedListCollapse(line) {
     return;
   }
   multilineCache.push(`<li>${line.split(" ")[1]}</li>`);
+}
+
+/**
+ * Processes file metadata
+ * @param line a line of markdown text
+ * @returns void; used to break out of the collapse when the block is opened and closed.
+ */
+function processMetadata(line) {
+  /**
+   * TODO: Process metadata.
+   * Ideally, this treats imaginary markdown as metadata.  Converting a section
+   * of the markdown file into an object. Then it will use that object to build
+   * a part of the vue file with things like (title, date, tags, and uuid).  This
+   * uuid can be used for dynamic routing.
+   *
+   * To process this further, we'll need to have an idea of what it looks like
+   * when completed.  Blocked by building a fake article and getting styling
+   * completed.
+   */
 }
 
 /**
