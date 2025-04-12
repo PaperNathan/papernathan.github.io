@@ -37,7 +37,7 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Run Blog Script
-        run: node ./scripts/mdToVue.js
+        run: npm run generate:articles
       - name: Build
         run: npm run build
         env:

@@ -1,11 +1,8 @@
-<script setup lang="ts">
-import BlogView from "@/views/BlogView/BlogView.vue";
-</script>
+<script setup lang="ts"></script>
 
 <template>
   <div class="HomeView">
     <h1>Hi</h1>
-    <RouterLink to="/blog">Go to Blog</RouterLink>
   </div>
 </template>
 

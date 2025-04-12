@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import articleList from "./components";
 import { useRoute } from "vue-router";
+import ArticleCard from "./ArticleCard.vue";
 
 const route = useRoute();
 
@@ -15,14 +16,15 @@ const selectedArticle = computed(() => {
 
 <template>
   <div class="BlogView">
-    <div v-if="!route.params.id" v-for="article in articleList">
-      <div :key="article.metadata.id">
-        <h2>{{ article.metadata.title }}</h2>
-        <p>{{ article.metadata.description }}</p>
-        <router-link :to="`/blog/${article.metadata.id}`">
-          Read more
-        </router-link>
-      </div>
+    <div class="BlogView__articleList" v-if="!route.params.id">
+      <ArticleCard
+        v-for="article in articleList"
+        :key="article.metadata.id"
+        :title="article.metadata.title"
+        :description="article.metadata.description"
+        :link="`/blog/${article.metadata.id}`"
+        :image="article.metadata.image"
+      />
     </div>
     <Component
       v-if="route.params.id"
@@ -32,4 +34,11 @@ const selectedArticle = computed(() => {
   </div>
 </template>
 
-<style lang="scss"></style>
+<style lang="scss">
+.BlogView {
+  &__articleList {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+}
+</style>

@@ -1,13 +1,25 @@
 <script setup lang="ts">
-import { RouterLink } from "vue-router";
+import { computed } from "vue";
+import { useRoute, RouterLink } from "vue-router";
+import HeaderBlinker from "@/components/HeaderBlinker.vue";
+
+const route = useRoute();
+
+const routePath = computed(() => {
+  const path = route.path.split("/");
+  return path[1] ? path[1] : "";
+});
 </script>
 
 <template>
   <div class="SiteHeader">
     <div class="SiteHeader__terminalLogo">
-      <RouterLink to="/"> <span>></span> nathan@home:~$ </RouterLink>
-      <span class="SiteHeader__terminalLogo--blinker" />
+      <RouterLink class="SiteHeader__terminalLogo--link" to="/">
+        <span class="SiteHeader__terminalLogo--text"> nathan@home:~$</span>
+        <HeaderBlinker :path="routePath" />
+      </RouterLink>
     </div>
+    <RouterLink to="/blog">Blog</RouterLink>
   </div>
 </template>
 
@@ -19,6 +31,7 @@ import { RouterLink } from "vue-router";
   height: 50px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
 
   &__terminalLogo {
     padding: 0 0.5rem;
@@ -26,39 +39,21 @@ import { RouterLink } from "vue-router";
     font-weight: 900;
     display: flex;
 
-    a {
-      color: $yellow-hue;
+    &--text {
+      margin-right: 0.5rem;
+    }
 
-      &:hover {
-        color: $background;
-      }
+    &--link {
+      display: flex;
+      align-items: center;
     }
 
     &:hover {
       background: $yellow-hue;
-    }
+      color: $background;
 
-    &--blinker {
-      display: inline-block;
-      width: 2px;
-      height: 1.125rem;
-      margin-left: 0.5rem;
-      background: $yellow-hue;
-      animation: blinker 1.5s linear infinite;
-
-      @keyframes blinker {
-        0% {
-          opacity: 0;
-        }
-        10% {
-          opacity: 1;
-        }
-        90% {
-          opacity: 1;
-        }
-        100% {
-          opacity: 0;
-        }
+      & > a {
+        color: $background;
       }
     }
   }

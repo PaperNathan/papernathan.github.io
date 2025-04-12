@@ -2,7 +2,7 @@ import fs, { read } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import readline from "readline";
-
+import crypto from "crypto";
 import textFormatter from "./textFormatter.js";
 
 const { fileNameToVueComponentName, removeFileExtension } = textFormatter();
@@ -16,6 +16,7 @@ let multilineOptions = {};
 let vueFiles = [];
 let markdownFiles = [];
 let metadata = {};
+let metadataCache = {};
 
 // Get the current file's directory
 const __filename = fileURLToPath(import.meta.url);
@@ -159,6 +160,13 @@ function processMarkdownFile(filePath, fileOptions) {
   </div>
 </template>
 `;
+
+    // Add metadata to the metadataCache
+    metadataCache[fileOptions.name] = Object.assign(metadata, {
+      id: crypto.randomUUID(),
+    });
+    metadata = {};
+
     fs.writeFile(vueFilePath, vueContent, (err) => {
       if (err) {
         console.error("Error writing file:", err.message);
@@ -331,17 +339,24 @@ function orderedListCollapse(line) {
  * @returns void; used to break out of the collapse when the block is opened and closed.
  */
 function processMetadata(line) {
-  /**
-   * TODO: Process metadata.
-   * Ideally, this treats imaginary markdown as metadata.  Converting a section
-   * of the markdown file into an object. Then it will use that object to build
-   * a part of the vue file with things like (title, date, tags, and uuid).  This
-   * uuid can be used for dynamic routing.
-   *
-   * To process this further, we'll need to have an idea of what it looks like
-   * when completed.  Blocked by building a fake article and getting styling
-   * completed.
-   */
+  if (line.startsWith("---")) {
+    return;
+  }
+  if (line.includes("title:")) {
+    metadata.title = line.split(":")[1].trim();
+  }
+  if (line.includes("description:")) {
+    metadata.description = line.split(":")[1].trim();
+  }
+  if (line.includes("tags:")) {
+    metadata.tags = line.split(":")[1].trim().split(",");
+  }
+  if (line.includes("date:")) {
+    metadata.date = line.split(":")[1].trim();
+  }
+  if (line.includes("image:")) {
+    metadata.author = line.split(":")[1].trim();
+  }
 }
 
 /**
@@ -396,21 +411,30 @@ function wrapMultiline(line, kind) {
  * Vue article files.
  */
 function writeArticleIndex() {
-  let fileImports = ``;
+  let fileImports = `// This file is auto-generated. Do not edit directly.\n// To regenerate this script run the script: npm run generate:articles\n\n`;
 
   markdownFiles.forEach((file) => {
     const fileName = fileNameToVueComponentName(removeFileExtension(file));
     fileImports += `import ${fileName} from "./${fileName}.vue";\n `;
   });
 
-  fileImports += `export { \n`;
+  fileImports += `export default [ \n`;
 
   markdownFiles.forEach((file) => {
     const fileName = fileNameToVueComponentName(removeFileExtension(file));
-    fileImports += `${fileName}, \n `;
+    console.log(metadataCache, fileName);
+    // const md = metadataCache[fileName];
+    // fileImports += "{ metadata: {\n";
+    // fileImports += `  id: "${md.id}", \n`;
+    // fileImports += `  description: "${md.description}", \n`;
+    // fileImports += `  title: "${md.title}", \n`;
+    // fileImports += `  date: "${md.date}", \n`;
+    // fileImports += `  image: "${md.image}", \n`;
+    // fileImports += `  tags: ${JSON.stringify(md.tags)}, \n`;
+    // fileImports += `}, component: ${fileName} }, \n`;
   });
 
-  fileImports += `}; \n`;
+  fileImports += `]; \n`;
 
   const filePath = path.join(
     __dirname,

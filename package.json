@@ -9,7 +9,8 @@
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
     "lint:format": "prettier --config .prettierrc 'src/**/*.ts' 'src/**/*.vue' --write",
-    "lint": "eslint --ext .ts,.vue src"
+    "lint": "eslint --ext .ts,.vue src",
+    "generate:articles": "node ./scripts/mdToVue.js"
   },
   "dependencies": {
     "pinia": "^3.0.1",
