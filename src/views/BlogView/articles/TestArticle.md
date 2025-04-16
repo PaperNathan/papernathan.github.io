@@ -2,7 +2,6 @@
 title: Testing Stuff
 description: Description of this stuff
 image: squiggles.png
-tags: tag1, tag2, tag3, tag4
 date: August 13, 1989
 ---
 

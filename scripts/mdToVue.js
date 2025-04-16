@@ -1,22 +1,17 @@
-import fs, { read } from "fs";
+import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import readline from "readline";
 import crypto from "crypto";
-import textFormatter from "./textFormatter.js";
 
-const { fileNameToVueComponentName, removeFileExtension } = textFormatter();
-
-let state = {
-  existingVueFiles: [],
-  content: "",
-};
+let existingVueFiles = [];
 let multilineCache = [];
 let multilineOptions = {};
 let vueFiles = [];
 let markdownFiles = [];
-let metadata = {};
-let metadataCache = {};
+let markdownProcessingCounter = 0;
+
+let importFileString = `export default {\n`;
 
 // Get the current file's directory
 const __filename = fileURLToPath(import.meta.url);
@@ -54,7 +49,7 @@ function readExistingVueFiles() {
     vueFiles = files.filter((file) => file.endsWith(".vue"));
     vueFiles.forEach((file) => {
       const fileName = file.replace(".vue", "");
-      state.existingVueFiles.push(fileName);
+      existingVueFiles.push(fileName);
     });
   });
 }
@@ -74,26 +69,37 @@ function initMarkdownProcessing() {
     markdownFiles = files.filter((file) => file.endsWith(".md"));
 
     // Process each file
-    markdownFiles.forEach((file) => {
+    markdownFiles.forEach((file, i) => {
       const fileName = file.replace(".md", "");
       const filePath = path.join(markdownArticleDirectory, file);
 
       // Check if the corresponding Vue file already exists and process file
-      if (!state.existingVueFiles.includes(fileName + ".vue")) {
-        console.log("Processing file:", filePath);
-        const fileOptions = {
-          name: fileName,
-          date: new Date(),
-        };
-        processMarkdownFile(filePath, fileOptions);
-      } else {
-        console.log(
-          `Vue file already exists for ${fileName}. Skipping processing...`,
-        );
-      }
-    });
+      // if (!state.existingVueFiles.includes(fileName + ".vue")) {
+      //   console.log("Processing file:", filePath);
+      //   const fileOptions = {
+      //     name: fileName,
+      //     date: new Date(),
+      //   };
+      //   processMarkdownFile(filePath, fileOptions);
+      // } else {
+      //   console.log(
+      //     `Vue file already exists for ${fileName}. Skipping processing...`,
+      //   );
+      // }
 
-    writeArticleIndex();
+      // Send it brother!
+      const fileOptions = {
+        name: fileName,
+        date: new Date(),
+      };
+
+      processMarkdownFile(filePath, fileOptions, () => {
+        markdownProcessingCounter++;
+        if (markdownProcessingCounter == markdownFiles.length) {
+          writeArticleIndex();
+        }
+      });
+    });
   });
 }
 
@@ -107,12 +113,15 @@ function initMarkdownProcessing() {
  * @param filePath The filepath of the markdown file
  * @param fileOptions The filename and the date of processing
  */
-function processMarkdownFile(filePath, fileOptions) {
+function processMarkdownFile(filePath, fileOptions, onComplete) {
   const readStream = fs.createReadStream(filePath, "utf8");
   const rl = readline.createInterface({
     input: readStream,
     crlfDelay: Infinity, // Handles both \n and \r\n line endings
   });
+
+  let localMetadata = {};
+  let content = { value: "" };
 
   rl.on("line", (line) => {
     line = collapseInterlineMd(line);
@@ -122,50 +131,53 @@ function processMarkdownFile(filePath, fileOptions) {
     if (multilineOptions.alive) {
       switch (multilineOptions.kind) {
         case "pre":
-          codeBlockCollapse(line);
+          codeBlockCollapse(line, content);
           break;
         case "blockquote":
-          blockQuoteCollapse(line);
+          blockQuoteCollapse(line, content);
           break;
         case "ul":
-          unorderedListCollapse(line);
+          unorderedListCollapse(line, content);
           break;
         case "ol":
-          orderedListCollapse(line);
+          orderedListCollapse(line, content);
           break;
         case "metadata":
-          processMetadata(line);
+          processMetadata(line, localMetadata);
           break;
       }
     } else if (checkSingleLine(line)) {
-      processSingleLine(line);
+      processSingleLine(line, content);
     } else {
-      state.content += line + "\n";
+      content.value += line + "\n";
     }
   });
 
   rl.on("close", () => {
     if (multilineCache.length > 0 && multilineOptions.alive) {
       multilineOptions.alive = false;
-      state.content += wrapMultiline() + "\n";
+      content.value += wrapMultiline() + "\n";
     }
 
     // write the processed content to a new Vue file
     const vueFileName = fileOptions.name + ".vue";
     const vueFilePath = path.join(outputDirectory, vueFileName);
-    const vueContent = `
-<template>
-  <div class="Article">
-  ${state.content}
-  </div>
-</template>
+    const vueContent = `<template>\n
+  <div class="Article">\n
+    ${content.value}\n
+  </div>\n
+</template>\n
 `;
 
-    // Add metadata to the metadataCache
-    metadataCache[fileOptions.name] = Object.assign(metadata, {
+    // add the metadata to the import file
+    let metadataString = Object.assign(localMetadata, {
       id: crypto.randomUUID(),
     });
-    metadata = {};
+
+    importFileString =
+      `import ${fileOptions.name} from "./${fileOptions.name}.vue";\n` +
+      importFileString;
+    importFileString += `  ${fileOptions.name}: { component: ${fileOptions.name}, metadata: ${JSON.stringify(metadataString)} },\n`;
 
     fs.writeFile(vueFilePath, vueContent, (err) => {
       if (err) {
@@ -174,6 +186,8 @@ function processMarkdownFile(filePath, fileOptions) {
         console.log("Vue file created:", vueFilePath);
       }
     });
+
+    onComplete();
   });
 }
 
@@ -279,14 +293,15 @@ function checkMultiline(line) {
  * @param line a line of markdown text
  * @returns void; used to break out of the collapse when the block is opened and closed.
  */
-function codeBlockCollapse(line) {
+function codeBlockCollapse(line, content) {
   if (multilineCache.length == 0) {
     multilineCache.push("<code>");
     return;
   } else if (line.startsWith("```") && multilineCache.length > 0) {
     multilineCache.push("</code>");
     multilineOptions.alive = false;
-    state.content += wrapMultiline() + "\n";
+    content.value += wrapMultiline() + "\n";
+
     return;
   }
   multilineCache.push(line);
@@ -296,10 +311,11 @@ function codeBlockCollapse(line) {
  * @param line a line of markdown text
  * @returns void; used to break out of the collapse when the block is opened and closed.
  */
-function blockQuoteCollapse(line) {
+function blockQuoteCollapse(line, content) {
   if (!line.startsWith(">") && multilineCache.length > 0) {
     multilineOptions.alive = false;
-    state.content += wrapMultiline() + "\n";
+    content.value += wrapMultiline() + "\n";
+
     return;
   }
   multilineCache.push(line.slice(1).trim());
@@ -310,10 +326,11 @@ function blockQuoteCollapse(line) {
  * @param line a line of markdown text
  * @returns void; used to break out of the collapse when the block is opened and closed.
  */
-function unorderedListCollapse(line) {
+function unorderedListCollapse(line, content) {
   if (!line.startsWith("-") && multilineCache.length > 0) {
     multilineOptions.alive = false;
-    state.content += wrapMultiline() + "\n";
+    content.value += wrapMultiline() + "\n";
+
     return;
   }
   multilineCache.push(`<li>${line.slice(1).trim()}</li>`);
@@ -324,10 +341,11 @@ function unorderedListCollapse(line) {
  * @param line a line of markdown text
  * @returns void; used to break out of the collapse when the block is opened and closed.
  */
-function orderedListCollapse(line) {
+function orderedListCollapse(line, content) {
   if (!line.match(/^\d/) && multilineCache.length > 0) {
     multilineOptions.alive = false;
-    state.content += wrapMultiline() + "\n";
+    content.value += wrapMultiline() + "\n";
+
     return;
   }
   multilineCache.push(`<li>${line.split(" ")[1]}</li>`);
@@ -338,24 +356,27 @@ function orderedListCollapse(line) {
  * @param line a line of markdown text
  * @returns void; used to break out of the collapse when the block is opened and closed.
  */
-function processMetadata(line) {
-  if (line.startsWith("---")) {
+function processMetadata(line, localMetadata) {
+  if (line.startsWith("---") && Object.keys(localMetadata).length == 0) {
+    return;
+  } else if (line.startsWith("---") && Object.keys(localMetadata).length == 0) {
+    multilineOptions.alive = false;
     return;
   }
   if (line.includes("title:")) {
-    metadata.title = line.split(":")[1].trim();
+    localMetadata.title = line.split(":")[1].trim();
   }
   if (line.includes("description:")) {
-    metadata.description = line.split(":")[1].trim();
+    localMetadata.description = line.split(":")[1].trim();
   }
   if (line.includes("tags:")) {
-    metadata.tags = line.split(":")[1].trim().split(",");
+    localMetadata.tags = line.split(":")[1].trim().split(",");
   }
   if (line.includes("date:")) {
-    metadata.date = line.split(":")[1].trim();
+    localMetadata.date = line.split(":")[1].trim();
   }
   if (line.includes("image:")) {
-    metadata.author = line.split(":")[1].trim();
+    localMetadata.image = line.split(":")[1].trim();
   }
 }
 
@@ -370,10 +391,10 @@ function checkSingleLine(line) {
 }
 
 /**
- * Collapses a single line of markdown into html tags and updates state.content
+ * Collapses a single line of markdown into html tags and updates content
  * @param line a line of markdown text
  */
-function processSingleLine(line) {
+function processSingleLine(line, content) {
   if (line.startsWith("####")) {
     line = line.replace("####", "<h4>") + "</h4>";
   } else if (line.startsWith("###")) {
@@ -384,7 +405,7 @@ function processSingleLine(line) {
     line = line.replace("#", "<h1>") + "</h1>";
   }
 
-  state.content += line + "\n";
+  content.value += line + "\n";
 }
 
 /**
@@ -393,7 +414,7 @@ function processSingleLine(line) {
  * @param kind the html tag for the markdown element
  * @returns the html wrapped content
  */
-function wrapMultiline(line, kind) {
+function wrapMultiline() {
   let wrappedContent = "";
   wrappedContent += `<${multilineOptions.kind}>\n`;
   multilineCache.forEach((line) => {
@@ -411,37 +432,14 @@ function wrapMultiline(line, kind) {
  * Vue article files.
  */
 function writeArticleIndex() {
-  let fileImports = `// This file is auto-generated. Do not edit directly.\n// To regenerate this script run the script: npm run generate:articles\n\n`;
-
-  markdownFiles.forEach((file) => {
-    const fileName = fileNameToVueComponentName(removeFileExtension(file));
-    fileImports += `import ${fileName} from "./${fileName}.vue";\n `;
-  });
-
-  fileImports += `export default [ \n`;
-
-  markdownFiles.forEach((file) => {
-    const fileName = fileNameToVueComponentName(removeFileExtension(file));
-    console.log(metadataCache, fileName);
-    // const md = metadataCache[fileName];
-    // fileImports += "{ metadata: {\n";
-    // fileImports += `  id: "${md.id}", \n`;
-    // fileImports += `  description: "${md.description}", \n`;
-    // fileImports += `  title: "${md.title}", \n`;
-    // fileImports += `  date: "${md.date}", \n`;
-    // fileImports += `  image: "${md.image}", \n`;
-    // fileImports += `  tags: ${JSON.stringify(md.tags)}, \n`;
-    // fileImports += `}, component: ${fileName} }, \n`;
-  });
-
-  fileImports += `]; \n`;
-
   const filePath = path.join(
     __dirname,
     "../src/views/BlogView/components/index.ts",
   );
 
-  fs.writeFile(filePath, fileImports, (err) => {
+  importFileString += `};\n`;
+
+  fs.writeFile(filePath, importFileString, (err) => {
     if (err) {
       console.error("Error writing file:", err.message);
     } else {

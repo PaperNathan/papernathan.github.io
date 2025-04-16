@@ -1,16 +1,43 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { onMounted, ref, type Ref } from "vue";
 import articleList from "./components";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter, onBeforeRouteLeave } from "vue-router";
 import ArticleCard from "./ArticleCard.vue";
+import type { Article, ArticleList } from "@/models/Article";
 
 const route = useRoute();
+const router = useRouter();
 
-const selectedArticle = computed(() => {
-  const article = articleList.find(
-    (item: any) => item.metadata.id === route.params.id,
-  );
-  return article ? article : articleList[0];
+const selectedArticle: Ref<Article> = ref(null);
+
+const setSelectedArticleFromParams = (id: string) => {
+  for (const article in articleList) {
+    if ((articleList as ArticleList)[article].metadata.id === id) {
+      selectedArticle.value = (articleList as ArticleList)[article];
+    }
+  }
+};
+
+const selectArticle = (id: string) => {
+  setSelectedArticleFromParams(id);
+  router.push(`/blog/${selectedArticle.value.metadata.id}`);
+};
+
+// onMounted(() => {
+//   if (route.params.id) {
+//     setSelectedArticleFromParams(route.params.id as string);
+//   } else {
+//     selectedArticle.value = null;
+//   }
+// });
+
+onBeforeRouteLeave((to, from, next) => {
+  if (to.params.id) {
+    setSelectedArticleFromParams(to.params.id as string);
+  } else {
+    selectedArticle.value = null;
+  }
+  next();
 });
 </script>
 
@@ -22,12 +49,12 @@ const selectedArticle = computed(() => {
         :key="article.metadata.id"
         :title="article.metadata.title"
         :description="article.metadata.description"
-        :link="`/blog/${article.metadata.id}`"
+        :link="() => selectArticle(article.metadata.id)"
         :image="article.metadata.image"
       />
     </div>
     <Component
-      v-if="route.params.id"
+      v-if="selectedArticle"
       :is="selectedArticle.component"
       :key="selectedArticle.metadata.id"
     />

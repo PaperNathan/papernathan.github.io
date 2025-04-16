@@ -2,7 +2,7 @@
 defineProps<{
   description: string;
   image?: string;
-  link: string;
+  link: any;
   tags?: string[];
   title: string;
 }>();
@@ -15,15 +15,17 @@ defineProps<{
     <div class="ArticleCard__content">
       <h2>{{ title }}</h2>
       <p>{{ description }}</p>
-      <div class="tags">
+      <div class="tags" v-if="tags">
         <span v-for="tag in tags" :key="tag">{{ tag }}</span>
       </div>
-      <router-link :to="link">Read more</router-link>
+      <div class="ArticleCard__link" @click="() => link()">Read More</div>
     </div>
   </div>
 </template>
 
 <style lang="scss">
+@use "@/styles/colors" as *;
+
 .ArticleCard {
   display: flex;
   flex-direction: column;
@@ -37,6 +39,16 @@ defineProps<{
 
   &__content {
     padding: 16px;
+  }
+
+  &__link {
+    color: $yellow-hue;
+
+    &:hover {
+      color: $background;
+      background-color: $yellow-hue;
+      cursor: pointer;
+    }
   }
 }
 </style>
