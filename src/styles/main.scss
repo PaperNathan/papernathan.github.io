@@ -1,0 +1,12 @@
+@use "./reset.scss" as *;
+@use "./colors.scss" as *;
+
+a {
+  color: $yellow-hue;
+  font-weight: 900;
+
+  &:hover {
+    color: $background;
+    background-color: $yellow-hue;
+  }
+}
