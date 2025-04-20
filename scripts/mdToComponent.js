@@ -4,10 +4,10 @@ import { fileURLToPath } from "url";
 import readline from "readline";
 import crypto from "crypto";
 
-let existingVueFiles = [];
+let existingComponentFiles = [];
 let multilineCache = [];
 let multilineOptions = {};
-let vueFiles = [];
+let componentFiles = [];
 let markdownFiles = [];
 let markdownProcessingCounter = 0;
 
@@ -27,33 +27,33 @@ const outputDirectory = path.join(__dirname, "../src/pages/Blog/components");
  * Main function to initialize the script
  */
 function main() {
-  readExistingVueFiles();
+  readexistingComponentFiles();
   initMarkdownProcessing();
 }
 
 /**
- * Reads the existing Vue files in the output directory
- * and populates the existingVueFiles array.
+ * Reads the existing  files in the output directory
+ * and populates the existingComponentFiles array.
  */
-function readExistingVueFiles() {
+function readexistingComponentFiles() {
   fs.readdir(outputDirectory, (err, files) => {
     if (err) {
       console.error("Error reading output directory:", err.message);
       return;
     }
 
-    // Filter only Vue files and store them in an array
-    vueFiles = files.filter((file) => file.endsWith(".tsx"));
-    vueFiles.forEach((file) => {
+    // Filter only  files and store them in an array
+    componentFiles = files.filter((file) => file.endsWith(".tsx"));
+    componentFiles.forEach((file) => {
       const fileName = file.replace(".tsx", "");
-      existingVueFiles.push(fileName);
+      existingComponentFiles.push(fileName);
     });
   });
 }
 
 /**
  * Read all markdown files from the articles directory
- * Check for nonexistant Vue files and process the markdown files
+ * Check for nonexistant  files and process the markdown files
  */
 function initMarkdownProcessing() {
   fs.readdir(markdownArticleDirectory, (err, files) => {
@@ -69,20 +69,6 @@ function initMarkdownProcessing() {
     markdownFiles.forEach((file, i) => {
       const fileName = file.replace(".md", "");
       const filePath = path.join(markdownArticleDirectory, file);
-
-      // Check if the corresponding Vue file already exists and process file
-      // if (!state.existingVueFiles.includes(fileName + ".tsx")) {
-      //   console.log("Processing file:", filePath);
-      //   const fileOptions = {
-      //     name: fileName,
-      //     date: new Date(),
-      //   };
-      //   processMarkdownFile(filePath, fileOptions);
-      // } else {
-      //   console.log(
-      //     `Vue file already exists for ${fileName}. Skipping processing...`,
-      //   );
-      // }
 
       // Send it brother!
       const fileOptions = {
@@ -101,12 +87,12 @@ function initMarkdownProcessing() {
 }
 
 /**
- *  Process a single markdown file into a vue file.
+ *  Process a single markdown file into a  file.
  *    - Reads the markdown file
  *    - Collapses interline markdown (e.g. bold, italic)
  *    - Collapses mutliline markdown (e.g. code blocks, blockquotes, lists)
  *    - Collapses single line markdown (e.g. headings)
- *    - Writes the processed content to a new Vue file
+ *    - Writes the processed content to a new  file
  * @param filePath The filepath of the markdown file
  * @param fileOptions The filename and the date of processing
  */
@@ -117,10 +103,13 @@ function processMarkdownFile(filePath, fileOptions, onComplete) {
     crlfDelay: Infinity, // Handles both \n and \r\n line endings
   });
 
+  multilineCache = [];
+  multilineOptions = { alive: false, kind: "" };
   let localMetadata = {};
   let content = { value: "" };
 
   rl.on("line", (line) => {
+    console.log("Original line:", line);
     line = collapseInterlineMd(line);
 
     checkMultiline(line);
@@ -156,10 +145,10 @@ function processMarkdownFile(filePath, fileOptions, onComplete) {
       content.value += wrapMultiline() + "\n";
     }
 
-    // write the processed content to a new Vue file
-    const vueFileName = fileOptions.name + ".tsx";
-    const vueFilePath = path.join(outputDirectory, vueFileName);
-    const vueContent = `export default function ${fileOptions.name}() {
+    // write the processed content to a new file
+    const componentFileName = fileOptions.name + ".tsx";
+    const componentFilePath = path.join(outputDirectory, componentFileName);
+    const componentContent = `export default function ${fileOptions.name}() {
   return (
     <div>
       <h1>${fileOptions.name}</h1>
@@ -179,11 +168,11 @@ function processMarkdownFile(filePath, fileOptions, onComplete) {
       fileOptions.name
     }, metadata: ${JSON.stringify(localMetadata)} },\n`;
 
-    fs.writeFile(vueFilePath, vueContent, (err) => {
+    fs.writeFile(componentFilePath, componentContent, (err) => {
       if (err) {
         console.error("Error writing file:", err.message);
       } else {
-        console.log("Vue file created:", vueFilePath);
+        console.log("File created:", componentFilePath);
       }
     });
 
@@ -232,7 +221,8 @@ function collapseInterlineMd(line) {
     let lineStart = line.slice(0, start);
     let lineEnd = line.slice(linkEnd + 1, line.length);
 
-    line = lineStart + `<a href="${link}">${text}</a>` + lineEnd;
+    line =
+      lineStart + `<a href="${link}" target="_blank">${text}</a>` + lineEnd;
   }
 
   return line;
@@ -299,9 +289,7 @@ function codeBlockCollapse(line, content) {
     return;
   } else if (line.startsWith("```") && multilineCache.length > 0) {
     multilineCache.push("</code>");
-    multilineOptions.alive = false;
     content.value += wrapMultiline() + "\n";
-
     return;
   }
   multilineCache.push(line);
@@ -313,9 +301,7 @@ function codeBlockCollapse(line, content) {
  */
 function blockQuoteCollapse(line, content) {
   if (!line.startsWith(">") && multilineCache.length > 0) {
-    multilineOptions.alive = false;
     content.value += wrapMultiline() + "\n";
-
     return;
   }
   multilineCache.push(line.slice(1).trim());
@@ -328,9 +314,7 @@ function blockQuoteCollapse(line, content) {
  */
 function unorderedListCollapse(line, content) {
   if (!line.startsWith("-") && multilineCache.length > 0) {
-    multilineOptions.alive = false;
     content.value += wrapMultiline() + "\n";
-
     return;
   }
   multilineCache.push(`<li>${line.slice(1).trim()}</li>`);
@@ -343,9 +327,7 @@ function unorderedListCollapse(line, content) {
  */
 function orderedListCollapse(line, content) {
   if (!line.match(/^\d/) && multilineCache.length > 0) {
-    multilineOptions.alive = false;
     content.value += wrapMultiline() + "\n";
-
     return;
   }
   multilineCache.push(`<li>${line.split(" ")[1]}</li>`);
@@ -429,7 +411,7 @@ function wrapMultiline() {
 
 /**
  * Write an index file that imports and exports all
- * Vue article files.
+ * Article files.
  */
 function writeArticleIndex() {
   const filePath = path.join(
