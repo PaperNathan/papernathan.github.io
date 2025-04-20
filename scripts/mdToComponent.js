@@ -341,7 +341,7 @@ function orderedListCollapse(line, content) {
 function processMetadata(line, localMetadata) {
   if (line.startsWith("---") && Object.keys(localMetadata).length == 0) {
     return;
-  } else if (line.startsWith("---") && Object.keys(localMetadata).length == 0) {
+  } else if (line.startsWith("---") && Object.keys(localMetadata).length > 0) {
     multilineOptions.alive = false;
     return;
   }
